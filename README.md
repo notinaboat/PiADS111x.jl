@@ -1,4 +1,4 @@
-# PiADXL345.jl
+# PiADS111x.jl
 
 Julia interface for the [ADS1115](https://www.ti.com/product/ADS1115)
 ADC on Raspberry Pi.
