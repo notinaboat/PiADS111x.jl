@@ -1,25 +1,25 @@
 # PiADXL345.jl
 
-Julia interface for the [ADXL345](https://www.analog.com/en/products/adxl345.html)
-Accelerometer on Raspberry Pi.
+Julia interface for the [ADS1115](https://www.ti.com/product/ADS1115)
+ADC on Raspberry Pi.
 
-In the example below the ADXL345 is connected to the Raspberry Pi's GPIO header
-as follows: CS = GPIO4, SDO = GPIO17, SDA = GPIO27, SCL = GPIO18.
+In the example below the ADS1115 is connected to the Raspberry Pi's GPIO header
+as follows: SDA = GPIO2, SCL = GPIO3.
 
 ```julia
-julia> using PiADXL345
+julia> using PiADS111x
 
-julia> adxl = adxl_open(cs=4, sdo=17, sda=27, scl=18)
-PiADXL345.ADXL345(0x04)
+julia> ads = ads_open(;bus=1, address=0x48)
+PiADS111x.ADS1115x(0)
 
-julia> v = take!(adxl)
-3-element Array{Int64,1}:
-  144
-  123
- -181
+julia> ads[0]
+2.0807045
 
-julia> v = PiADXL345.pitch_and_roll(take!(adxl))
-(pitch = 0.9572953530227399, roll = 55.38053437654027)
+julia> for i in 0:3 println("Pin AIN", i, ": ", ads[i], "V") ; end
+Pin AIN0: 2.0807045V
+Pin AIN1: 1.65989V
+Pin AIN2: 0.2891155V
+Pin AIN3: 0.2888615V
 
 julia> versioninfo()
 
@@ -33,4 +33,4 @@ Platform Info:
   LLVM: libLLVM-9.0.1 (ORCJIT, arm1176jz-s)
 ```
 
-![ADXL345 Module](https://components101.com/sites/default/files/component_pin/ADXL345-Pinout.jpg)
+![ADS1115 Module](https://i.ebayimg.com/images/g/01YAAOSwu1VW5BXc/s-l1600.jpg)
