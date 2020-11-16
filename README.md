@@ -6,6 +6,9 @@ ADC on Raspberry Pi.
 In the example below the ADS1115 is connected to the Raspberry Pi's GPIO header
 as follows: SDA = GPIO2, SCL = GPIO3.
 
+`bus=1` specifies i2c bus `1`.
+
+
 ```julia
 julia> using PiADS111x
 
