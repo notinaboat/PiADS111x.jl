@@ -16,19 +16,22 @@ import PiGPIOC.i2cWriteWordData
 # See http://abyz.me.uk/rpi/pigpio/cif.html
 
 
-const ADS_CONVERSION_REGISTER = 0       # [1, 9.6.1, p27]
-const ADS_CONFIG_REGISTER     = 1       # [1, 9.6.3, p28]
-const ADS_CONFIG_DEFAULT      = 0x8583  # [1, 9.6.3, p28]
-const ADS_OS                  = 0x8000  # [1, Table 8, p28]
+const ADS_CONVERSION_REGISTER = 0                       # [1, 9.6.1, p27]
+const ADS_CONFIG_REGISTER     = 1                       # [1, 9.6.3, p28]
+const ADS_CONFIG_DEFAULT      = 0x8583                  # [1, 9.6.3, p28]
+const ADS_PGA_4V096           = 0x0001 <<  9            # [1, Table 8, p28]
+const ADS_OS                  = 0x0000 << 15            # [1, Table 8, p28]
+const ADS_COMP_QUE_DISABLE    = 0x0003 <<  0            # [1, Table 8, p28]
 
-struct ADS1115x <: AbstractChannel{UInt16}
+
+struct ADS1115 <: AbstractChannel{UInt16}
     i2c::Cint
 end
 
 """
-    ads_open(;bus=1, address=0x480)::ADS1115x
+    ads_open(;bus=1, address=0x480)::ADS1115
 
-Connect to ADS111x at `address` on i2c `bus`.
+Connect to ADS1115 at `address` on i2c `bus`.
 """
 function ads_open(;bus=1, address=0x48)
 
@@ -40,38 +43,62 @@ function ads_open(;bus=1, address=0x48)
     i2c = i2cOpen(bus, address, 0)
     @assert i2c >= 0
 
-    ADS1115x(i2c)
+    ads = ADS1115(i2c)
+    ads_config(ads)
+    ads
 end
 
 
 """
-    getindex(::ADS1115x, i)
+    ads_config(::ADS1115 , [mux = 0])
+
+Configure using `mux` bits. See MUX in [1, Table 8, p28].
+"""
+function ads_config(ads::ADS1115, mux=UInt16(0))
+    conf = ADS_OS |
+           ADS_PGA_4V096 |
+           ADS_COMP_QUE_DISABLE |
+           mux
+    ads_write(ads, ADS_CONFIG_REGISTER, conf)
+    x = ads_read(ads, ADS_CONFIG_REGISTER)
+    @assert x == conf
+    nothing
+end
+
+
+"""
+    getindex(::ADS1115, i)
 
 Run single Analog to Digital Conversion for pin `i` (0:3)
 """
-function Base.getindex(ads::ADS1115x, i)
+function Base.getindex(ads::ADS1115, i)
 
-    @assert i in 0:3 "ADS1115x input `i` must be in range 0:3"
-    @assert !ads_is_busy(ads)
-
-    ads_write(ads, ADS_CONFIG_REGISTER,
-                   ADS_CONFIG_DEFAULT | 
-                   UInt16(0x4000 | (i << 12))) # [1, Table 8, p28]
-
-    sleep(1/128) # 128 SPS [1, Table 8, p28]
+    @assert i in 0:3 "ADS1115 input `i` must be in range 0:3"
+    mux = UInt16(0x4000 | (i << 12)) # [1, Table 8, p28]
+    ads_config(ads, mux)
+    sleep(1/8) # 8 SPS [1, Table 8, p28]
     while ads_is_busy(ads)
         yield()
     end
-
-    n = ads_read(ads)
-    V = (n * 63.5) / 1000000 # [1, Table 3, p17]
+    ads[]
 end
 
 
 """
-    ads_write(::ADS1115x, register, value)
+    getindex(::ADS1115)
 
-Write 16-bit `value` to `register` on ADS111x ADC.
+Read latest value from ADS_CONVERSION_REGISTER.
+"""
+function Base.getindex(ads::ADS1115)
+    n = signed(ads_read(ads, ADS_CONVERSION_REGISTER))
+    V = (n * 125) / 1000000 # [1, Table 3, p17]
+end
+
+
+"""
+    ads_write(::ADS1115, register, value)
+
+Write 16-bit `value` to `register` on ADS1115 ADC.
 """
 function ads_write(ads, register, v)
     @assert register in 0:3
@@ -82,11 +109,11 @@ end
 
 
 """
-    ads_read(::ADS1115x, register=ADS_CONVERSION_REGISTER))
+    ads_read(::ADS1115, register))
 
-Read 16-bit value from `register` on ADS111x ADC.
+Read 16-bit value from `register` on ADS1115 ADC.
 """
-function ads_read(ads, register=ADS_CONVERSION_REGISTER)
+function ads_read(ads, register)
     @assert register in 0:3
     n = i2cReadWordData(ads.i2c, register)
     @assert n >= 0
@@ -95,9 +122,9 @@ end
 
 
 """
-    ads_is_busy(::ADS1115x)
+    ads_is_busy(::ADS1115)
 
-Is the ADS111x ADC currently performing a conversion?
+Is the ADS1115 ADC currently performing a conversion?
 """
 ads_is_busy(ads) = (ads_read(ads, ADS_CONFIG_REGISTER) & ADS_OS) == 0
 

@@ -1,7 +1,7 @@
 name = "PiADS111x"
 uuid = "6ded2379-fb09-4f62-a84a-0d72f1edbcc0"
 authors = ["notinaboat <notinaboat@icloud.com>"]
-version = "0.1.0"
+version = "0.2.0"
 
 [deps]
 PiGPIOC = "30a511cb-78f8-4457-8440-9b2c99933694"
